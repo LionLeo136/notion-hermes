@@ -14,6 +14,11 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+# Ensure parent dir is on sys.path so `python cli.py` works from any cwd
+_src_root = Path(__file__).resolve().parent.parent
+if str(_src_root) not in sys.path:
+    sys.path.insert(0, str(_src_root))
+
 from dotenv import load_dotenv
 
 from hermes_notion_bridge.notion_client import NotionClient
@@ -304,13 +309,19 @@ def run_watch():
     try:
         cleanup_old_rows(notion)
     except Exception:
-        logger.exception("Initial cleanup failed")
+        logger.warning("Initial cleanup skipped (Notion unreachable)")
 
+    _query_errors = 0
     while not _shutdown_requested:
         try:
             pending = notion.query_pending()
-        except Exception:
-            logger.exception("Failed to query Notion. Will retry in %ds.", POLL_INTERVAL)
+            _query_errors = 0
+        except Exception as e:
+            _query_errors += 1
+            if _query_errors == 1:
+                logger.error("Notion query failed: %s", e)
+            elif _query_errors % 6 == 0:
+                logger.error("Notion still unreachable after %d attempts", _query_errors)
             time.sleep(POLL_INTERVAL)
             continue
 
