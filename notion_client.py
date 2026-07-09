@@ -77,7 +77,7 @@ class NotionClient:
                 "property": "Status",
                 "select": {"equals": "Pending"},
             },
-            "sorts": [{"timestamp": "created", "direction": "ascending"}],
+            "sorts": [{"timestamp": "created_time", "direction": "ascending"}],
             "page_size": 100,
         }
 
@@ -104,7 +104,7 @@ class NotionClient:
 
         direction = "descending" if descending else "ascending"
         body_base = {
-            "sorts": [{"timestamp": "created", "direction": direction}],
+            "sorts": [{"timestamp": "created_time", "direction": direction}],
             "page_size": 100,
         }
 
