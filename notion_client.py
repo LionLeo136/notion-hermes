@@ -125,21 +125,28 @@ class NotionClient:
 
     # ── update ──────────────────────────────────────────────────────
 
-    def update_status(self, page_id: str, status: str) -> None:
+    def update_row(self, page_id: str, status: Optional[str] = None, result: Optional[str] = None) -> None:
         """
-        Update the Status select property of a page.
-        status must be one of: Pending, Doing, Done, Failed
+        Update a page's Status and/or Result properties.
+        Only sends properties that are provided (not None).
+        Result is truncated to 1900 chars (Notion limit ~2000 per rich_text block).
         """
+        properties = {}
+        if status is not None:
+            properties["Status"] = {"select": {"name": status}}
+        if result is not None:
+            result = result[:1900]
+            properties["Result"] = {
+                "rich_text": [{"text": {"content": result}}]
+            }
+
+        if not properties:
+            return  # nothing to update
+
         resp = self._request(
             "PATCH",
             f"/pages/{page_id}",
-            json={
-                "properties": {
-                    "Status": {
-                        "select": {"name": status},
-                    }
-                }
-            },
+            json={"properties": properties},
         )
         resp.raise_for_status()
 

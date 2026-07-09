@@ -5,7 +5,7 @@ Hermes Agent API client — sends prompts and streams SSE responses to stdout.
 import json
 import logging
 import sys
-from typing import Optional, Generator
+from typing import Optional, Tuple
 
 import requests
 
@@ -24,10 +24,10 @@ class HermesClient:
         self.model = model
         self.timeout = 600  # 10 minutes for long tasks
 
-    def send_prompt(self, prompt: str) -> bool:
+    def send_prompt(self, prompt: str) -> Tuple[bool, str]:
         """
         Send a prompt to Hermes, stream the response to stdout.
-        Returns True on success, False on error.
+        Returns (success, full_response_text).
         """
         chat_url = f"{self.api_url}/v1/chat/completions"
 
@@ -58,6 +58,7 @@ class HermesClient:
 
             current_event: Optional[str] = None
             in_thinking = False
+            full_content = ""
 
             for line in resp.iter_lines(decode_unicode=True):
                 if line is None:
@@ -81,7 +82,7 @@ class HermesClient:
                         print("✅ Hermes completed.")
                         print(f"{'─' * 60}\n")
                         sys.stdout.flush()
-                        return True
+                        return True, full_content
 
                     # Handle tool progress event
                     if current_event == "hermes.tool.progress":
@@ -95,7 +96,9 @@ class HermesClient:
                     except json.JSONDecodeError:
                         continue
 
-                    self._print_delta(data, in_thinking)
+                    delta_text = self._print_delta(data, in_thinking)
+                    if delta_text:
+                        full_content += delta_text
                     current_event = None
 
                 # Reset event context on blank line (SSE spec)
@@ -108,14 +111,14 @@ class HermesClient:
             print(f"\n{'─' * 60}")
             print("⚠️  Hermes stream ended unexpectedly (no [DONE]).")
             print(f"{'─' * 60}\n")
-            return False
+            return False, full_content
 
         except requests.exceptions.Timeout:
             logger.error("Hermes request timed out after %ds", self.timeout)
-            return False
+            return False, ""
         except requests.exceptions.RequestException as e:
             logger.error("Hermes API error: %s", e)
-            return False
+            return False, ""
 
     def _print_tool_progress(self, data_str: str):
         """Parse and display tool progress event."""
@@ -127,31 +130,32 @@ class HermesClient:
         except (json.JSONDecodeError, KeyError):
             pass
 
-    def _print_delta(self, data: dict, in_thinking: bool) -> bool:
-        """Print delta content from a choice. Returns updated in_thinking flag."""
+    def _print_delta(self, data: dict, in_thinking: bool) -> str:
+        """
+        Print delta content from a choice. Returns the content text
+        (excluding reasoning) for accumulation.
+        """
         choices = data.get("choices", [])
         if not choices:
-            return in_thinking
+            return ""
 
         delta = choices[0].get("delta", {})
 
-        # Reasoning / thinking content (gray)
+        # Reasoning / thinking content (gray) — don't accumulate
         reasoning = delta.get("reasoning_content", "")
         if reasoning:
             if not in_thinking:
                 print(f"\n{GRAY}", end="")
-                in_thinking = True
             print(reasoning, end="", flush=True)
-            return in_thinking
+            return ""
 
         # Close thinking block if we were in one
         if in_thinking:
             print(f"{RESET}\n", end="")
-            in_thinking = False
 
-        # Regular content
+        # Regular content — accumulate + print
         content = delta.get("content", "")
         if content:
             print(content, end="", flush=True)
 
-        return in_thinking
+        return content

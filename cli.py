@@ -12,7 +12,7 @@ import time
 import signal
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 from dotenv import load_dotenv
 
@@ -131,7 +131,12 @@ def _build_prompt(request_title: str, details: str, repo: Optional[str] = None) 
             "   on GitHub to understand what you did. Be specific.",
             "",
             "IMPORTANT: Do NOT ask for confirmation. Just execute the task completely.",
-            "After pushing, your final response should summarize what you did.",
+            "",
+            "When done, end your response with a block starting with '### RESULT' containing:",
+            "  - Summary of what you did (2-4 lines)",
+            "  - List of changed files",
+            "  - Commit SHA and branch",
+            "  - Commit link: https://github.com/LionLeo136/notion-hermes/commit/<sha> if a commit was made",
         ]
     )
     return "\n".join(parts)
@@ -153,6 +158,24 @@ def _check_repo_allowed(repo: Optional[str]) -> bool:
     return is_allowed
 
 
+# ── result extraction ────────────────────────────────────────────────
+
+RESULT_MARKER = "### RESULT"
+
+
+def _extract_result(full_response: str) -> str:
+    """Extract the result block from Hermes response, or last ~1500 chars."""
+    if not full_response:
+        return "(no response)"
+
+    idx = full_response.find(RESULT_MARKER)
+    if idx != -1:
+        return full_response[idx:].strip()[:1900]
+
+    # fallback: last ~1500 characters
+    return full_response[-1500:].strip()
+
+
 # ── processing ────────────────────────────────────────────────────────
 
 
@@ -167,30 +190,43 @@ def process_one_row(page: dict, notion: NotionClient, hermes: HermesClient) -> b
     if repo_raw:
         logger.info("Target repo: %s", repo_raw)
 
+    # ── safety check ──
     if not _check_repo_allowed(repo_raw):
         try:
-            notion.update_status(page_id, "Failed")
+            notion.update_row(page_id, status="Failed",
+                              result="ERROR: repo not in ALLOWED_REPOS")
         except Exception:
-            logger.exception("Failed to update status to Failed")
+            logger.exception("Failed to write Failed status")
         return False
 
+    # ── step 1: flip Pending → Doing ──
     try:
-        notion.update_status(page_id, "Doing")
+        notion.update_row(page_id, status="Doing")
         logger.info("Status → Doing")
     except Exception:
-        logger.exception("Failed to update status to Doing")
+        logger.exception("Failed to set Doing")
         return False
 
+    # ── step 2-3: build prompt, call Hermes ──
     prompt = _build_prompt(title, details, repo_raw)
-    success = hermes.send_prompt(prompt)
+    success, full_response = hermes.send_prompt(prompt)
 
-    final_status = "Done" if success else "Failed"
+    # ── step 4-5: extract result, write back ──
+    result_text = ""
+    if success:
+        result_text = _extract_result(full_response)
+        final_status = "Done"
+    else:
+        result_text = f"ERROR: Hermes request failed"
+        final_status = "Failed"
+
     try:
-        notion.update_status(page_id, final_status)
+        notion.update_row(page_id, status=final_status, result=result_text)
         color = GREEN if success else RED
-        print(f"{color}Status → {final_status}{RESET}")
+        print(f"\n{color}Status → {final_status}{RESET}")
+        print(f"{BOLD}Result ({len(result_text)} chars):{RESET} {result_text[:200]}...")
     except Exception:
-        logger.exception("Failed to update status to %s", final_status)
+        logger.exception("Failed to write final status + result")
         return False
 
     return success
