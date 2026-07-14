@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: flask-hello
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/LionLeo136/notion-hermes.git
+    targetRevision: master
+    path: aws-k8s-lab/k8s-manifests/flask-hello
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: flask
+  syncPolicy:
+    automated:
+      prune: true          # xóa object đã bỏ khỏi Git
+      selfHeal: true       # ai sửa tay trên cluster → kéo về đúng Git
+    syncOptions:
+      - CreateNamespace=true   # tự tạo namespace flask

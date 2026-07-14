@@ -55,3 +55,27 @@ resource "aws_instance" "worker" {
 
   tags = { Name = "k8s-worker-${count.index + 1}" }   # k8s-worker-1, k8s-worker-2
 }
+
+# Role cho EC2 node
+resource "aws_iam_role" "node" {
+  name = "k8s-lab-node-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+# Quyền đọc ECR (pull + GetAuthorizationToken)
+resource "aws_iam_role_policy_attachment" "node_ecr_ro" {
+  role       = aws_iam_role.node.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
+
+resource "aws_iam_instance_profile" "node" {
+  name = "k8s-lab-node-profile"
+  role = aws_iam_role.node.name
+}
