@@ -15,8 +15,6 @@ spec:
       labels:
         app: flask-hello
     spec:
-      imagePullSecrets:
-        - name: ecr-cred          # secret sẽ tạo ở bước 4 (ECR token)
       containers:
         - name: flask-hello
           image: 766796015930.dkr.ecr.ap-southeast-1.amazonaws.com/flask-hello:66231210b235dd39272fd68adf00093f9b19c706
