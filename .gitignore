@@ -4,8 +4,10 @@ __pycache__/
 *.pyo
 .venv/
 
-# Secrets
+# Secrets / certs
 .env
+*.key
+*.srl
 
 # OS
 .DS_Store
@@ -16,17 +18,4 @@ Thumbs.db
 *.tfstate
 *.tfstate.*
 *.tfvars
-
-# Python
-__pycache__/
-*.pyc
-
-# Terraform
-**/.terraform/*
-*.tfstate
-*.tfstate.*
-*.tfvars
-
-# Python
-__pycache__/
-*.pyc
+docs/

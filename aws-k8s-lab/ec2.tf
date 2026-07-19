@@ -37,6 +37,9 @@ resource "aws_instance" "control_plane" {
   }
 
   tags = { Name = "k8s-control-plane" }
+    lifecycle {
+    ignore_changes = [ami]   
+  }
 }
 
 # 4. Worker (2 máy giống nhau -> dùng count để khỏi lặp code)
@@ -54,6 +57,10 @@ resource "aws_instance" "worker" {
   }
 
   tags = { Name = "k8s-worker-${count.index + 1}" }   # k8s-worker-1, k8s-worker-2
+
+  lifecycle {
+    ignore_changes = [ami]
+  }
 }
 
 # Role cho EC2 node

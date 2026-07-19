@@ -34,3 +34,19 @@ output "ssh_commands" {
     workers       = [for w in aws_instance.worker : "ssh ubuntu@${w.public_ip}"]
   }
 }
+
+output "harbor_ip" {
+  value = {
+    private = aws_instance.harbor.private_ip
+    public  = aws_instance.harbor.public_ip
+    ssh     = "ssh ubuntu@${aws_instance.harbor.public_ip}"
+  }
+}
+
+output "gitlab_ip" {
+  value = {
+    private = aws_instance.gitlab.private_ip
+    public  = aws_instance.gitlab.public_ip
+    ssh     = "ssh ubuntu@${aws_instance.gitlab.public_ip}"
+  }
+}
