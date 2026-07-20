@@ -8,6 +8,24 @@ pipeline {
     stage('Checkout') {
       steps { checkout scm }
     }
+    stage('SonarQube Analysis') {
+        steps {
+            script {
+                def scannerHome = tool 'sonar-scanner'
+                withSonarQubeEnv('sonarqube') {
+                    sh "${scannerHome}/bin/sonar-scanner"
+                }
+            }
+        }
+    }
+
+    stage('Quality Gate') {
+        steps {
+            timeout(time: 5, unit: 'MINUTES') {
+                waitForQualityGate abortPipeline: true
+            }
+        }
+    }
     stage('Build image') {
       steps {
         script { env.TAG = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim() }
