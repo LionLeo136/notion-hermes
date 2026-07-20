@@ -19,7 +19,7 @@ spec:
       - name: harbor-cred
       containers:
         - name: flask-hello
-          image: 766796015930.dkr.ecr.ap-southeast-1.amazonaws.com/flask-hello:8d4a8d7
+          image: 10.10.1.163/flask-hello/flask-hello:8d4a8d7
           ports:
             - containerPort: 5000
           resources:
