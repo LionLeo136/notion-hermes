@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/LionLeo136/notion-hermes.git
+    repoURL: http://gitlab.lab/lab/notion-hermes.git
     targetRevision: master
     path: aws-k8s-lab/k8s-manifests/flask-hello
   destination:

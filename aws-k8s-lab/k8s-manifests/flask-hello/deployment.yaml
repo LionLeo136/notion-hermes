@@ -15,9 +15,11 @@ spec:
       labels:
         app: flask-hello
     spec:
+      imagePullSecrets:
+      - name: harbor-cred
       containers:
         - name: flask-hello
-          image: 766796015930.dkr.ecr.ap-southeast-1.amazonaws.com/flask-hello:66231210b235dd39272fd68adf00093f9b19c706
+          image: 766796015930.dkr.ecr.ap-southeast-1.amazonaws.com/flask-hello:8d4a8d7
           ports:
             - containerPort: 5000
           resources:
